@@ -1,0 +1,242 @@
+using System;
+using cAlgo.API;
+using cAlgo.API.Indicators;
+
+namespace cAlgo
+{
+    [Indicator(IsOverlay = true, AutoRescale = false, TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
+    public class HalfTrend : Indicator
+    {
+        [Parameter("Maximum Price", DefaultValue = PriceType.High)]
+        public PriceType MaximumPriceType { get; set; }
+
+        [Parameter("Minimum Price", DefaultValue = PriceType.Low)]
+        public PriceType MinimumPriceType { get; set; }
+
+        [Parameter("Amplitude", DefaultValue = 2, MinValue = 0)]
+        public int Period { get; set; }
+
+        [Parameter("Hide Last Bars", DefaultValue = 0, MinValue = 0)]
+        public int Shift { get; set; }
+
+        [Parameter("Smoothing", DefaultValue = MovingAverageType.Simple)]
+        public MovingAverageType MaType { get; set; }
+
+        [Parameter("Show Arrows?", DefaultValue = true)]
+        public bool ShowArrows { get; set; }
+
+        [Parameter("Show Pips?")]
+        public bool ShowPips { get; set; }
+
+        [Output("Trend", LineColor = "Transparent")]
+        public IndicatorDataSeries Trend { get; set; }
+
+        [Output("Main", LineColor = "Gray")]
+        public IndicatorDataSeries Result { get; set; }
+
+        [Output("Up", PlotType = PlotType.DiscontinuousLine, LineColor = "Cyan", Thickness = 2)]
+        public IndicatorDataSeries Up { get; set; }
+
+        [Output("Down", PlotType = PlotType.DiscontinuousLine, LineColor = "Magenta", Thickness = 2)]
+        public IndicatorDataSeries Down { get; set; }
+
+        public enum PriceType
+        {
+            Open,
+            High,
+            Low,
+            Close,
+            Median,
+            Typical,
+            Weighted
+        }
+
+        private class PricePoint
+        {
+            public int X { get; set; }
+            public double Y { get; set; }
+        }
+
+        private DataSeries _highSeries, _lowSeries;
+        private MovingAverage _highAvg, _lowAvg;
+        private AverageTrueRange _atr;
+        private double _highMaximum, _lowMinimum;
+        private PricePoint _lastEntry;
+
+        protected override void Initialize()
+        {
+            _highSeries = GetSeries(MaximumPriceType);
+            _lowSeries = GetSeries(MinimumPriceType);
+
+            _highAvg = Indicators.MovingAverage(_highSeries, Period, MaType);
+            _lowAvg = Indicators.MovingAverage(_lowSeries, Period, MaType);
+            _atr = Indicators.AverageTrueRange(100, MovingAverageType.Simple);
+        }
+
+        public DataSeries GetSeries(PriceType type)
+        {
+            switch (type)
+            {
+                case PriceType.Open: return Bars.OpenPrices;
+                case PriceType.High: return Bars.HighPrices;
+                case PriceType.Low: return Bars.LowPrices;
+                case PriceType.Close: return Bars.ClosePrices;
+                case PriceType.Median: return Bars.MedianPrices;
+                case PriceType.Typical: return Bars.TypicalPrices;
+                case PriceType.Weighted: return Bars.WeightedPrices;
+                default: throw new Exception();
+            }
+        }
+
+        public override void Calculate(int index)
+        {
+            index -= Shift;
+            if (index < 0)
+                return;
+
+            var bar = Bars[index];
+
+            if (index == 0)
+            {
+                _highMaximum = _highSeries[index];
+                _lowMinimum = _lowSeries[index];
+
+                if (bar.Close > bar.Open)
+                {
+                    Trend[index] = 1;
+                    Result[index] = _lowMinimum;
+                }
+                else
+                {
+                    Trend[index] = -1;
+                    Result[index] = _highMaximum;
+                }
+
+                return;
+            }
+
+            var maximum = _highSeries.Maximum(Period, index);
+            var minimum = _lowSeries.Minimum(Period, index);
+            var maximumAverage = Math.Round(_highAvg.Result[index], Symbol.Digits);
+            var minimumAverage = Math.Round(_lowAvg.Result[index], Symbol.Digits);
+
+            Trend[index] = Trend[index - 1];
+
+            if (Trend[index - 1] > 0)
+            {
+                _lowMinimum = Math.Max(minimum, _lowMinimum);
+
+                if (_lowMinimum >= maximumAverage && bar.Close < _lowSeries[index - 1])
+                {
+                    Trend[index] = -1;
+                    _highMaximum = maximum;
+                }
+            }
+            else
+            {
+                _highMaximum = Math.Min(maximum, _highMaximum);
+
+                if (_highMaximum <= minimumAverage && bar.Close > _highSeries[index - 1])
+                {
+                    Trend[index] = +1;
+                    _lowMinimum = minimum;
+                }
+            }
+
+            if (Trend[index] > 0)
+            {
+                Result[index] = Math.Max(Result[index - 1], _lowMinimum);
+                Down[index] = double.NaN;
+
+                for (var i = index; i >= index - 1; i--)
+                {
+                    Up[i] = Result[i];
+                }
+            }
+            else
+            {
+                Result[index] = Math.Min(Result[index - 1], _highMaximum);
+                Up[index] = double.NaN;
+
+                for (var i = index; i >= index - 1; i--)
+                {
+                    Down[i] = Result[i];
+                }
+            }
+
+            var isTrendChange = (int)Trend[index] != (int)Trend[index - 1];
+
+            if (ShowArrows)
+            {
+                if (isTrendChange)
+                {
+                    DrawArrow(index);
+                }
+                else
+                {
+                    Chart.RemoveObject(index + "_Arrow");
+                }
+            }
+
+            if (ShowPips)
+            {
+                if (isTrendChange)
+                {
+                    var entry = new PricePoint { X = index + Shift, Y = Bars.ClosePrices[index + Shift] };
+                    if (_lastEntry != null && _lastEntry.X != entry.X)
+                    {
+                        var pips = Math.Round((_lastEntry.Y - entry.Y) / Symbol.PipSize, 1) * Trend[index];
+                        var color = pips > 0 ? Chart.ColorSettings.WinningDealColor : pips < 0 ? Chart.ColorSettings.LosingDealColor : Chart.ColorSettings.ForegroundColor;
+                        var text = string.Format(Trend[index] > 0 ? " \n{0}" : "{0}\n ", pips.ToString("+#.0;-#.0;0.0"));
+                        var pipsText = Chart.DrawText(index + "_Pips", text, index, Result[index] - _atr.Result[index] / 2 * Trend[index], color);
+
+                        pipsText.HorizontalAlignment = HorizontalAlignment.Center;
+                        pipsText.VerticalAlignment = Trend[index] < 0 ? VerticalAlignment.Top : VerticalAlignment.Bottom;
+
+                        Chart.DrawTrendLine(index + "_Line", _lastEntry.X, _lastEntry.Y, entry.X, entry.Y, Color.FromArgb(180, color), 2);
+                    }
+
+                    if (_lastEntry == null || _lastEntry.X != entry.X)
+                        _lastEntry = entry;
+                }
+            }
+        }
+
+        private void DrawArrow(int index)
+        {
+            if (Trend[index] > 0)
+            {
+                Chart.DrawIcon(index + "_Arrow", ChartIconType.UpArrow, index, Result[index] - _atr.Result[index] / 2, Color.Cyan);
+            }
+            else
+            {
+                Chart.DrawIcon(index + "_Arrow", ChartIconType.DownArrow, index, Result[index] + _atr.Result[index] / 2, Color.Magenta);
+            }
+        }
+    }
+
+    public static class Functions
+    {
+        public static double Maximum(this DataSeries series, int period, int index)
+        {
+            var maximum = double.MinValue;
+            for (var i = Math.Max(0, index - period); i <= index; i++)
+            {
+                maximum = Math.Max(maximum, series[i]);
+            }
+
+            return maximum;
+        }
+
+        public static double Minimum(this DataSeries series, int period, int index)
+        {
+            var minimum = double.MaxValue;
+            for (var i = Math.Max(0, index - period); i <= index; i++)
+            {
+                minimum = Math.Min(minimum, series[i]);
+            }
+
+            return minimum;
+        }
+    }
+}
