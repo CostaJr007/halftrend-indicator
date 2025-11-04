@@ -4,56 +4,126 @@ using cAlgo.API.Indicators;
 
 namespace cAlgo
 {
+    /// <summary>
+    /// The HalfTrend indicator identifies the trend direction and provides entry and exit points.
+    /// </summary>
     [Indicator(IsOverlay = true, AutoRescale = false, TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
     public class HalfTrend : Indicator
     {
+        /// <summary>
+        /// Gets or sets the type of price to use for the maximum price calculation.
+        /// </summary>
         [Parameter("Maximum Price", DefaultValue = PriceType.High)]
         public PriceType MaximumPriceType { get; set; }
 
+        /// <summary>
+        /// Gets or sets the type of price to use for the minimum price calculation.
+        /// </summary>
         [Parameter("Minimum Price", DefaultValue = PriceType.Low)]
         public PriceType MinimumPriceType { get; set; }
 
+        /// <summary>
+        /// Gets or sets the period for the moving averages.
+        /// </summary>
         [Parameter("Amplitude", DefaultValue = 2, MinValue = 0)]
         public int Period { get; set; }
 
+        /// <summary>
+        /// Gets or sets the number of bars to shift the indicator.
+        /// </summary>
         [Parameter("Hide Last Bars", DefaultValue = 0, MinValue = 0)]
         public int Shift { get; set; }
 
+        /// <summary>
+        /// Gets or sets the type of moving average to use.
+        /// </summary>
         [Parameter("Smoothing", DefaultValue = MovingAverageType.Simple)]
         public MovingAverageType MaType { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to show arrows on the chart.
+        /// </summary>
         [Parameter("Show Arrows?", DefaultValue = true)]
         public bool ShowArrows { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to show pips on the chart.
+        /// </summary>
         [Parameter("Show Pips?")]
         public bool ShowPips { get; set; }
 
+        /// <summary>
+        /// Gets or sets the trend data series.
+        /// </summary>
         [Output("Trend", LineColor = "Transparent")]
         public IndicatorDataSeries Trend { get; set; }
 
+        /// <summary>
+        /// Gets or sets the main indicator data series.
+        /// </summary>
         [Output("Main", LineColor = "Gray")]
         public IndicatorDataSeries Result { get; set; }
 
+        /// <summary>
+        /// Gets or sets the up trend data series.
+        /// </summary>
         [Output("Up", PlotType = PlotType.DiscontinuousLine, LineColor = "Cyan", Thickness = 2)]
         public IndicatorDataSeries Up { get; set; }
 
+        /// <summary>
+        /// Gets or sets the down trend data series.
+        /// </summary>
         [Output("Down", PlotType = PlotType.DiscontinuousLine, LineColor = "Magenta", Thickness = 2)]
         public IndicatorDataSeries Down { get; set; }
 
+        /// <summary>
+        /// Defines the price types that can be used in the indicator calculations.
+        /// </summary>
         public enum PriceType
         {
+            /// <summary>
+            /// The opening price.
+            /// </summary>
             Open,
+            /// <summary>
+            /// The highest price.
+            /// </summary>
             High,
+            /// <summary>
+            /// The lowest price.
+            /// </summary>
             Low,
+            /// <summary>
+            /// The closing price.
+            /// </summary>
             Close,
+            /// <summary>
+            /// The median price ((High + Low) / 2).
+            /// </summary>
             Median,
+            /// <summary>
+            /// The typical price ((High + Low + Close) / 3).
+            /// </summary>
             Typical,
+            /// <summary>
+            /// The weighted price ((High + Low + Close + Close) / 4).
+            /// </summary>
             Weighted
         }
 
+        /// <summary>
+        /// Represents a point on the chart with an X and Y coordinate.
+        /// </summary>
         private class PricePoint
         {
+            /// <summary>
+            /// Gets or sets the X-coordinate of the point.
+            /// </summary>
             public int X { get; set; }
+
+            /// <summary>
+            /// Gets or sets the Y-coordinate of the point.
+            /// </summary>
             public double Y { get; set; }
         }
 
@@ -63,6 +133,9 @@ namespace cAlgo
         private double _highMaximum, _lowMinimum;
         private PricePoint _lastEntry;
 
+        /// <summary>
+        /// Initializes the indicator.
+        /// </summary>
         protected override void Initialize()
         {
             _highSeries = GetSeries(MaximumPriceType);
@@ -73,6 +146,11 @@ namespace cAlgo
             _atr = Indicators.AverageTrueRange(100, MovingAverageType.Simple);
         }
 
+        /// <summary>
+        /// Gets the data series for the specified price type.
+        /// </summary>
+        /// <param name="type">The price type.</param>
+        /// <returns>The data series for the specified price type.</returns>
         public DataSeries GetSeries(PriceType type)
         {
             switch (type)
@@ -88,6 +166,10 @@ namespace cAlgo
             }
         }
 
+        /// <summary>
+        /// Calculates the indicator value for the specified index.
+        /// </summary>
+        /// <param name="index">The index to calculate the indicator value for.</param>
         public override void Calculate(int index)
         {
             index -= Shift;
@@ -202,6 +284,10 @@ namespace cAlgo
             }
         }
 
+        /// <summary>
+        /// Draws an arrow on the chart to indicate a trend change.
+        /// </summary>
+        /// <param name="index">The index at which to draw the arrow.</param>
         private void DrawArrow(int index)
         {
             if (Trend[index] > 0)
@@ -215,8 +301,18 @@ namespace cAlgo
         }
     }
 
+    /// <summary>
+    /// Provides extension methods for the DataSeries class.
+    /// </summary>
     public static class Functions
     {
+        /// <summary>
+        /// Calculates the maximum value of a data series over a specified period.
+        /// </summary>
+        /// <param name="series">The data series.</param>
+        /// <param name="period">The period over which to calculate the maximum value.</param>
+        /// <param name="index">The current index.</param>
+        /// <returns>The maximum value in the series over the specified period.</returns>
         public static double Maximum(this DataSeries series, int period, int index)
         {
             var maximum = double.MinValue;
@@ -228,6 +324,13 @@ namespace cAlgo
             return maximum;
         }
 
+        /// <summary>
+        /// Calculates the minimum value of a data series over a specified period.
+        /// </summary>
+        /// <param name="series">The data series.</param>
+        /// <param name="period">The period over which to calculate the minimum value.</param>
+        /// <param name="index">The current index.</param>
+        /// <returns>The minimum value in the series over the specified period.</returns>
         public static double Minimum(this DataSeries series, int period, int index)
         {
             var minimum = double.MaxValue;
