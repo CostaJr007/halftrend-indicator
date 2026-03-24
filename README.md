@@ -1,54 +1,74 @@
-# Trading Indicator Documentation
+# 📈 HalfTrend Indicator
 
-## Introduction
-This repository contains a trading indicator that helps traders make informed decisions in the financial markets. It analyzes market data and provides signals based on predefined criteria.
+Professional HalfTrend indicator implementation for technical analysis and trend following.
 
-## Features
-- **Real-time data analysis**: Monitors market conditions and provides updates.
-- **Customizable parameters**: Users can tailor the indicator to fit their trading strategies.
-- **User-friendly interface**: Simplifies the integration of the indicator into existing trading platforms.
+## 🎯 Features
 
-## Installation
-To install the trading indicator, follow these steps:
-1. Clone the repository:
-   ```
-   git clone https://github.com/CostaJr007/halftrendis.git
-   ```
-2. Navigate to the project directory:
-   ```
-   cd halftrendis
-   ```
-3. Install the necessary dependencies:
-   ```
-   npm install
-   ```
+- ✅ Accurate trend detection
+- ✅ Minimal lag
+- ✅ Support/Resistance levels
+- ✅ Multi-timeframe support
+- ✅ Alert system
+- ✅ Customizable parameters
 
-## Usage
-After installing the indicator, you can start using it by:
-- Integrating it into your trading software.
-- Configuring the parameters according to your strategy.
-- Running the indicator to get trading signals.
+## 📋 Requirements
 
-## Contributing
-We welcome contributions! Please follow these steps:
-1. Fork the repository.
-2. Create a new branch for your feature:
-   ```
-   git checkout -b feature/YourFeature
-   ```
-3. Make your changes and commit them:
-   ```
-   git commit -m 'Add some feature'
-   ```
-4. Push to the branch:
-   ```
-   git push origin feature/YourFeature
-   ```
-5. Create a pull request.
+- TradingView (Pine Script v5)
+- MetaTrader 4/5
+- Or Python 3.8+
 
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 🔧 Installation
 
-## Acknowledgements
-- This indicator is inspired by various successful trading strategies and indicators used in the financial markets.
-- Special thanks to the open-source community for their valuable contributions and support.
+### TradingView
+
+1. Open Pine Editor
+2. Copy code from src/halftrend.pine
+3. Save and add to chart
+
+### Python
+
+ + "`" + @"
+bash
+git clone https://github.com/CostaJr007/halftrendis.git
+pip install -r requirements.txt
+ + "`" + @"
+
+## 💡 Usage
+
+### Python Example
+
+ + "`" + @"
+python
+from halftrend import HalfTrend
+import pandas as pd
+
+data = pd.read_csv('price_data.csv')
+ht = HalfTrend(atriod=2, amplitude=3)
+signals = ht.calculate(data)
+ + "`" + @"
+
+## ⚙️ Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| atriod | ATR period | 2 |
+| amplitude | Trend amplitude | 3 |
+| dev | Standard deviations | 2 |
+
+## 📊 Trading Signals
+
+| Signal | Description | Action |
+|--------|-------------|--------|
+| 🟢 Bullish | Trend turns up | Buy |
+| 🔴 Bearish | Trend turns down | Sell |
+
+## 📄 License
+
+MIT License
+
+## 👤 Author
+
+**CostaJr007**
+
+---
+⭐ *"Indicador dos deuses"* - May your trades be profitable!
